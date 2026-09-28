@@ -1,0 +1,1759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TimeForge — Attendance Tracker</title>
+<style>
+  :root {
+    --bg-1: #0f1226;
+    --bg-2: #1a1f3a;
+    --bg-3: #252b4d;
+    --surface: rgba(255,255,255,0.06);
+    --surface-2: rgba(255,255,255,0.09);
+    --border: rgba(255,255,255,0.12);
+    --text: #e9ecff;
+    --text-dim: #a3a8c9;
+    --accent: #7c5cff;
+    --accent-2: #22d3ee;
+    --green: #22c55e;
+    --red: #ef4444;
+    --orange: #f59e0b;
+    --gold: #fbbf24;
+    --blue: #3b82f6;
+    --gray: #6b7280;
+    --shadow-lg: 0 20px 60px rgba(0,0,0,0.45);
+    --shadow-card: 0 10px 30px rgba(0,0,0,0.35);
+    --radius: 18px;
+  }
+  [data-theme="light"] {
+    --bg-1: #eef1ff;
+    --bg-2: #f7f8ff;
+    --bg-3: #ffffff;
+    --surface: rgba(255,255,255,0.75);
+    --surface-2: rgba(255,255,255,0.9);
+    --border: rgba(0,0,0,0.08);
+    --text: #1a1f3a;
+    --text-dim: #5a6080;
+    --shadow-card: 0 10px 30px rgba(60,60,120,0.12);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif;
+    color: var(--text);
+    background: radial-gradient(1200px 800px at 10% -10%, #3b2a7a 0%, transparent 50%),
+                radial-gradient(1000px 700px at 110% 10%, #0ea5b7 0%, transparent 55%),
+                linear-gradient(180deg, var(--bg-1), var(--bg-2));
+    min-height: 100vh;
+    overflow-x: hidden;
+    transition: background .4s ease;
+  }
+  [data-theme="light"] body {
+    background: radial-gradient(1200px 800px at 10% -10%, #c7b8ff 0%, transparent 50%),
+                radial-gradient(1000px 700px at 110% 10%, #b8f0f7 0%, transparent 55%),
+                linear-gradient(180deg, var(--bg-1), var(--bg-2));
+  }
+
+  .app { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+  .sidebar {
+    position: sticky; top: 0; height: 100vh;
+    padding: 24px 16px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+    border-right: 1px solid var(--border);
+    backdrop-filter: blur(14px);
+    display: flex; flex-direction: column; gap: 6px;
+    z-index: 10;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; padding: 10px 12px 22px; }
+  .brand-logo {
+    width: 42px; height: 42px; border-radius: 12px;
+    background: conic-gradient(from 200deg, #7c5cff, #22d3ee, #7c5cff);
+    display: grid; place-items: center;
+    box-shadow: 0 10px 24px rgba(124,92,255,0.45), inset 0 0 12px rgba(255,255,255,0.3);
+    transform: perspective(600px) rotateY(-8deg) rotateX(6deg);
+    transition: transform .4s;
+  }
+  .brand-logo:hover { transform: perspective(600px) rotateY(8deg) rotateX(-6deg); }
+  .brand-logo svg { width: 22px; height: 22px; color: #fff; }
+  .brand-title { font-weight: 800; letter-spacing: .3px; font-size: 18px; }
+  .brand-sub { font-size: 11px; color: var(--text-dim); }
+
+  .nav-btn {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px; border-radius: 12px;
+    color: var(--text-dim); cursor: pointer;
+    border: 1px solid transparent;
+    transition: all .25s ease;
+    font-weight: 500; font-size: 14px;
+    background: transparent;
+  }
+  .nav-btn:hover { color: var(--text); background: var(--surface); }
+  .nav-btn.active {
+    color: var(--text);
+    background: linear-gradient(135deg, rgba(124,92,255,0.22), rgba(34,211,238,0.14));
+    border-color: rgba(124,92,255,0.35);
+    box-shadow: 0 6px 18px rgba(124,92,255,0.25);
+  }
+  .nav-btn svg { width: 18px; height: 18px; }
+  .sidebar-foot { margin-top: auto; padding: 10px 8px; font-size: 12px; color: var(--text-dim); }
+
+  .main { padding: 24px 28px 60px; min-width: 0; }
+  .topbar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 22px; }
+  .live-clock {
+    padding: 10px 16px; border-radius: 14px;
+    background: var(--surface); border: 1px solid var(--border);
+    font-variant-numeric: tabular-nums;
+    display: flex; flex-direction: column;
+  }
+  .live-clock .d { font-size: 12px; color: var(--text-dim); }
+  .live-clock .t { font-size: 18px; font-weight: 700; letter-spacing: .5px; }
+
+  .spacer { flex: 1; }
+  .icon-btn {
+    width: 40px; height: 40px; border-radius: 12px;
+    background: var(--surface); border: 1px solid var(--border);
+    display: grid; place-items: center; cursor: pointer;
+    color: var(--text); transition: transform .2s, background .2s;
+  }
+  .icon-btn:hover { transform: translateY(-2px); background: var(--surface-2); }
+  .icon-btn svg { width: 18px; height: 18px; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+    box-shadow: var(--shadow-card);
+    backdrop-filter: blur(10px);
+    transition: transform .3s ease, box-shadow .3s ease;
+  }
+  .card-3d { transform-style: preserve-3d; transition: transform .4s ease; }
+  .card-3d:hover {
+    transform: perspective(1000px) rotateX(2deg) rotateY(-2deg) translateY(-4px);
+    box-shadow: var(--shadow-lg);
+  }
+  .card h3 { font-size: 13px; color: var(--text-dim); font-weight: 600; letter-spacing: .5px; text-transform: uppercase; margin-bottom: 10px; }
+  .card .big { font-size: 28px; font-weight: 800; }
+  .card .sub { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
+
+  .grid { display: grid; gap: 16px; }
+  .grid-5 { grid-template-columns: repeat(5, 1fr); }
+  .grid-4 { grid-template-columns: repeat(4, 1fr); }
+  .grid-3 { grid-template-columns: repeat(3, 1fr); }
+  .grid-2 { grid-template-columns: repeat(2, 1fr); }
+
+  .cycle-nav {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 14px 16px; border-radius: 16px;
+    background: linear-gradient(135deg, rgba(124,92,255,0.18), rgba(34,211,238,0.12));
+    border: 1px solid rgba(124,92,255,0.3);
+    box-shadow: 0 10px 30px rgba(124,92,255,0.18);
+    margin-bottom: 18px;
+  }
+  .cycle-nav .title { font-weight: 700; font-size: 14px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .8px; }
+  .cycle-nav .range { font-weight: 800; font-size: 18px; }
+  .cycle-nav .status-pill {
+    padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600;
+    background: rgba(34,197,94,0.18); color: #86efac; border: 1px solid rgba(34,197,94,0.35);
+  }
+  .cycle-nav .status-pill.prev { background: rgba(148,163,184,0.18); color: #cbd5e1; border-color: rgba(148,163,184,0.35); }
+  .cycle-nav .status-pill.future { background: rgba(59,130,246,0.18); color: #93c5fd; border-color: rgba(59,130,246,0.35); }
+  .cycle-btn {
+    padding: 8px 12px; border-radius: 10px;
+    background: var(--surface-2); border: 1px solid var(--border);
+    color: var(--text); cursor: pointer; font-weight: 600; font-size: 13px;
+    transition: all .2s;
+  }
+  .cycle-btn:hover { transform: translateY(-1px); background: rgba(255,255,255,0.14); }
+  .cycle-select {
+    padding: 8px 12px; border-radius: 10px;
+    background: var(--surface-2); border: 1px solid var(--border);
+    color: var(--text); font-weight: 600; font-size: 13px; cursor: pointer;
+  }
+
+  .progress-wrap { flex: 1; min-width: 220px; }
+  .progress-bar {
+    height: 10px; border-radius: 999px;
+    background: rgba(255,255,255,0.08); overflow: hidden;
+    position: relative; box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+  }
+  .progress-fill {
+    height: 100%; border-radius: 999px;
+    background: linear-gradient(90deg, #7c5cff, #22d3ee);
+    box-shadow: 0 0 12px rgba(124,92,255,0.6);
+    transition: width .6s ease;
+  }
+  .progress-meta { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-dim); margin-top: 6px; }
+
+  .clock-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 18px; }
+  .clock-btn {
+    position: relative;
+    padding: 22px; border-radius: 20px;
+    border: 1px solid var(--border);
+    color: white; font-weight: 800; font-size: 20px;
+    cursor: pointer; overflow: hidden;
+    transition: transform .25s ease, box-shadow .25s ease;
+    text-align: left; letter-spacing: .3px;
+  }
+  .clock-btn .label { display: block; font-size: 12px; font-weight: 600; opacity: .85; letter-spacing: 1.5px; text-transform: uppercase; }
+  .clock-btn .time { display: block; font-size: 30px; margin-top: 6px; font-variant-numeric: tabular-nums; }
+  .clock-btn .hint { display: block; font-size: 12px; opacity: .8; margin-top: 4px; }
+  .clock-btn.in {
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    box-shadow: 0 18px 40px rgba(34,197,94,0.35), inset 0 0 30px rgba(255,255,255,0.12);
+  }
+  .clock-btn.out {
+    background: linear-gradient(135deg, #ef4444, #b91c1c);
+    box-shadow: 0 18px 40px rgba(239,68,68,0.35), inset 0 0 30px rgba(255,255,255,0.12);
+  }
+  .clock-btn:hover { transform: translateY(-4px) scale(1.01); }
+  .clock-btn:active { transform: translateY(-1px) scale(0.99); }
+  .clock-btn::after {
+    content: ''; position: absolute; inset: -50%;
+    background: radial-gradient(circle at 30% 20%, rgba(255,255,255,0.35), transparent 40%);
+    pointer-events: none;
+  }
+  .clock-btn.pulse::before {
+    content: ''; position: absolute; top: 16px; right: 16px;
+    width: 12px; height: 12px; border-radius: 50%;
+    background: #fff; box-shadow: 0 0 0 0 rgba(255,255,255,0.7);
+    animation: pulse 1.6s infinite;
+  }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(255,255,255,0.7); }
+    70% { box-shadow: 0 0 0 14px rgba(255,255,255,0); }
+    100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
+  }
+
+  .table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); }
+  table { width: 100%; border-collapse: collapse; min-width: 1050px; }
+  th, td { padding: 12px 14px; text-align: left; font-size: 14px; border-bottom: 1px solid var(--border); }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: .6px; color: var(--text-dim); font-weight: 700; background: rgba(255,255,255,0.03); }
+  tbody tr { transition: background .2s; }
+  tbody tr:hover { background: rgba(255,255,255,0.04); }
+  tbody tr.weekoff { opacity: .55; text-decoration: line-through; text-decoration-color: var(--text-dim); }
+  tbody tr.weekoff td.status { text-decoration: none; }
+  tbody tr.absent { background: rgba(239,68,68,0.06); }
+  tbody tr.today { outline: 2px solid rgba(124,92,255,0.5); outline-offset: -2px; }
+
+  /* Totals row */
+  tfoot td {
+    font-weight: 800; font-size: 14px;
+    background: linear-gradient(135deg, rgba(124,92,255,0.18), rgba(34,211,238,0.12));
+    border-top: 2px solid rgba(124,92,255,0.4);
+    border-bottom: none;
+    position: sticky; bottom: 0;
+    backdrop-filter: blur(10px);
+  }
+  tfoot .total-label {
+    text-transform: uppercase; letter-spacing: 1px; font-size: 12px;
+    color: var(--text-dim);
+  }
+  tfoot .total-val { font-size: 16px; font-variant-numeric: tabular-nums; }
+  tfoot .total-general { color: var(--accent-2); }
+  tfoot .total-overtime { color: var(--gold); }
+  tfoot .total-combined { color: var(--accent); }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 999px;
+    font-size: 12px; font-weight: 700;
+    border: 1px solid transparent;
+  }
+  .badge.present { background: rgba(34,197,94,0.15); color: #86efac; border-color: rgba(34,197,94,0.3); }
+  .badge.absent  { background: rgba(239,68,68,0.15); color: #fca5a5; border-color: rgba(239,68,68,0.3); }
+  .badge.weekoff { background: rgba(148,163,184,0.18); color: #cbd5e1; border-color: rgba(148,163,184,0.3); }
+  .badge.incomplete { background: rgba(245,158,11,0.15); color: #fcd34d; border-color: rgba(245,158,11,0.3); }
+  .badge.edited { background: rgba(59,130,246,0.15); color: #93c5fd; border-color: rgba(59,130,246,0.3); }
+  .badge.overtime {
+    background: linear-gradient(135deg, rgba(251,191,36,0.22), rgba(245,158,11,0.15));
+    color: #fde68a; border-color: rgba(251,191,36,0.4);
+    box-shadow: 0 0 10px rgba(251,191,36,0.2);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .row-btn {
+    padding: 6px 10px; border-radius: 8px;
+    background: var(--surface-2); border: 1px solid var(--border);
+    color: var(--text); cursor: pointer; font-size: 12px; font-weight: 600;
+  }
+  .row-btn:hover { background: rgba(255,255,255,0.14); }
+
+  .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .chip {
+    padding: 7px 12px; border-radius: 999px;
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--text-dim); cursor: pointer; font-size: 13px; font-weight: 600;
+    transition: all .2s;
+  }
+  .chip:hover { color: var(--text); }
+  .chip.active { background: linear-gradient(135deg, rgba(124,92,255,0.3), rgba(34,211,238,0.2)); color: var(--text); border-color: rgba(124,92,255,0.4); }
+
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+  .cal-head { text-align: center; font-size: 12px; color: var(--text-dim); font-weight: 700; padding: 6px; text-transform: uppercase; }
+  .cal-day {
+    aspect-ratio: 1/1; border-radius: 12px; padding: 8px;
+    background: var(--surface); border: 1px solid var(--border);
+    display: flex; flex-direction: column; cursor: pointer;
+    transition: transform .2s; position: relative;
+  }
+  .cal-day:hover { transform: translateY(-2px); }
+  .cal-day .num { font-weight: 800; font-size: 16px; }
+  .cal-day .hrs { font-size: 11px; color: var(--text-dim); margin-top: auto; }
+  .cal-day .ot { font-size: 10px; color: var(--gold); font-weight: 700; }
+  .cal-day.present { background: linear-gradient(135deg, rgba(34,197,94,0.22), rgba(34,197,94,0.08)); border-color: rgba(34,197,94,0.4); }
+  .cal-day.absent  { background: linear-gradient(135deg, rgba(239,68,68,0.22), rgba(239,68,68,0.08)); border-color: rgba(239,68,68,0.4); }
+  .cal-day.weekoff { background: linear-gradient(135deg, rgba(148,163,184,0.22), rgba(148,163,184,0.08)); border-color: rgba(148,163,184,0.4); opacity: .7; }
+  .cal-day.today { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .cal-day.empty { visibility: hidden; }
+
+  .bar-chart { display: flex; align-items: flex-end; gap: 8px; height: 160px; padding: 8px 4px; }
+  .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .bar-stack { width: 100%; display: flex; flex-direction: column-reverse; border-radius: 8px 8px 4px 4px; overflow: hidden; min-height: 4px; transition: height .6s ease; box-shadow: 0 6px 14px rgba(124,92,255,0.3); }
+  .bar-gen { background: linear-gradient(180deg, #7c5cff, #22d3ee); }
+  .bar-ot  { background: linear-gradient(180deg, #fbbf24, #f59e0b); }
+  .bar-label { font-size: 11px; color: var(--text-dim); }
+  .bar-value { font-size: 11px; font-weight: 700; }
+
+  .donut-wrap { display: flex; align-items: center; gap: 20px; }
+  .donut {
+    width: 130px; height: 130px; border-radius: 50%;
+    position: relative;
+    background: conic-gradient(var(--green) 0deg, var(--green) 0deg, var(--red) 0deg, var(--red) 0deg, var(--gray) 0deg);
+    display: grid; place-items: center;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.3), 0 10px 30px rgba(0,0,0,0.3);
+  }
+  .donut::before {
+    content: ''; position: absolute; inset: 14px; border-radius: 50%;
+    background: var(--bg-2);
+  }
+  .donut-center { position: relative; text-align: center; }
+  .donut-center .v { font-size: 22px; font-weight: 800; }
+  .donut-center .l { font-size: 11px; color: var(--text-dim); }
+  .legend { display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+  .legend .row { display: flex; align-items: center; gap: 8px; }
+  .legend .dot { width: 10px; height: 10px; border-radius: 3px; }
+
+  /* Hours breakdown bar */
+  .hours-breakdown { margin-top: 12px; }
+  .hb-bar {
+    height: 14px; border-radius: 999px; overflow: hidden;
+    background: rgba(255,255,255,0.06); display: flex;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+  }
+  .hb-gen { background: linear-gradient(90deg, #7c5cff, #22d3ee); height: 100%; transition: width .6s; }
+  .hb-ot  { background: linear-gradient(90deg, #fbbf24, #f59e0b); height: 100%; transition: width .6s; }
+  .hb-legend { display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px; }
+  .hb-legend .gen { color: var(--accent-2); font-weight: 700; }
+  .hb-legend .ot  { color: var(--gold); font-weight: 700; }
+
+  .modal-back {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+    display: none; align-items: center; justify-content: center;
+    z-index: 100; backdrop-filter: blur(6px);
+  }
+  .modal-back.open { display: flex; }
+  .modal {
+    width: min(520px, 92vw); max-height: 90vh; overflow: auto;
+    background: linear-gradient(180deg, var(--bg-3), var(--bg-2));
+    border: 1px solid var(--border);
+    border-radius: 20px; padding: 22px;
+    box-shadow: var(--shadow-lg);
+    animation: pop .25s ease;
+  }
+  @keyframes pop { from { transform: scale(.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .modal h2 { font-size: 18px; margin-bottom: 14px; }
+  .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+  .field label { font-size: 12px; color: var(--text-dim); font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+  .field input, .field select, .field textarea {
+    padding: 10px 12px; border-radius: 10px;
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--text); font-size: 14px; font-family: inherit;
+  }
+  .field textarea { min-height: 70px; resize: vertical; }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px; }
+  .btn {
+    padding: 10px 16px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--surface-2); color: var(--text); font-weight: 600; cursor: pointer;
+    transition: transform .2s;
+  }
+  .btn:hover { transform: translateY(-1px); }
+  .btn.primary { background: linear-gradient(135deg, #7c5cff, #22d3ee); border: none; color: white; }
+  .btn.danger { background: linear-gradient(135deg, #ef4444, #b91c1c); border: none; color: white; }
+
+  .toast-wrap { position: fixed; bottom: 20px; right: 20px; z-index: 200; display: flex; flex-direction: column; gap: 8px; }
+  .toast {
+    padding: 12px 16px; border-radius: 12px;
+    background: var(--bg-3); border: 1px solid var(--border);
+    box-shadow: var(--shadow-card);
+    font-size: 14px; font-weight: 500;
+    animation: slide .3s ease;
+    max-width: 320px;
+  }
+  .toast.success { border-left: 4px solid var(--green); }
+  .toast.error { border-left: 4px solid var(--red); }
+  .toast.info { border-left: 4px solid var(--blue); }
+  @keyframes slide { from { transform: translateX(120%); } to { transform: translateX(0); } }
+
+  .section { display: none; }
+  .section.active { display: block; animation: fade .3s ease; }
+  @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  .section-head { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+  .section-head h1 { font-size: 24px; font-weight: 800; }
+  .section-head .sub { color: var(--text-dim); font-size: 13px; }
+
+  .settings-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+
+  @media print {
+    .sidebar, .topbar, .cycle-nav, .clock-panel, .filters, .nav-btn, .icon-btn, .row-btn, .modal-back, .toast-wrap { display: none !important; }
+    body { background: white; color: black; }
+    .app { grid-template-columns: 1fr; }
+    .card, .table-wrap { box-shadow: none; border: 1px solid #ccc; background: white; color: black; }
+    th, td { color: black; }
+    tfoot td { background: #f0f0f0 !important; color: black !important; }
+    .badge { color: black; border: 1px solid #888; }
+  }
+
+  @media (max-width: 1200px) {
+    .grid-5 { grid-template-columns: repeat(3, 1fr); }
+  }
+  @media (max-width: 980px) {
+    .app { grid-template-columns: 1fr; }
+    .sidebar {
+      position: fixed; left: -280px; width: 260px; transition: left .3s;
+      box-shadow: var(--shadow-lg);
+    }
+    .sidebar.open { left: 0; }
+    .grid-5, .grid-4 { grid-template-columns: repeat(2, 1fr); }
+    .grid-3 { grid-template-columns: 1fr; }
+    .grid-2 { grid-template-columns: 1fr; }
+    .settings-grid { grid-template-columns: 1fr; }
+    .clock-panel { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 560px) {
+    .main { padding: 16px; }
+    .grid-5, .grid-4 { grid-template-columns: 1fr 1fr; }
+    .cycle-nav .range { font-size: 15px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="9"/>
+          <path d="M12 7v5l3 2"/>
+        </svg>
+      </div>
+      <div>
+        <div class="brand-title">TimeForge</div>
+        <div class="brand-sub">Attendance Tracker · v1.1</div>
+      </div>
+    </div>
+
+    <button class="nav-btn active" data-view="dashboard">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+      Dashboard
+    </button>
+    <button class="nav-btn" data-view="attendance">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      Attendance
+    </button>
+    <button class="nav-btn" data-view="calendar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+      Calendar
+    </button>
+    <button class="nav-btn" data-view="reports">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+      Reports
+    </button>
+    <button class="nav-btn" data-view="history">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 5 6l-2 2"/><path d="M12 7v5l4 2"/></svg>
+      History
+    </button>
+    <button class="nav-btn" data-view="settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      Settings
+    </button>
+
+    <div class="sidebar-foot">
+      <div>Local-only · Your data stays here</div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <button class="icon-btn" id="menuBtn" title="Menu" style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div class="live-clock">
+        <div class="d" id="liveDate">—</div>
+        <div class="t" id="liveTime">—</div>
+      </div>
+      <div class="spacer"></div>
+      <button class="icon-btn" id="themeBtn" title="Toggle theme">
+        <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+      </button>
+      <button class="icon-btn" id="exportBtn" title="Export JSON">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      </button>
+      <button class="icon-btn" id="importBtn" title="Import JSON">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      </button>
+      <input type="file" id="importFile" accept="application/json" style="display:none" />
+    </div>
+
+    <div class="cycle-nav" id="cycleNav">
+      <div>
+        <div class="title">Current Attendance Cycle</div>
+        <div class="range" id="cycleRange">—</div>
+      </div>
+      <span class="status-pill" id="cycleStatus">Current</span>
+      <button class="cycle-btn" id="prevCycle">← Previous</button>
+      <button class="cycle-btn" id="currCycle">Current Cycle</button>
+      <button class="cycle-btn" id="nextCycle">Next →</button>
+      <select class="cycle-select" id="cycleSelect"></select>
+      <div class="progress-wrap">
+        <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+        <div class="progress-meta">
+          <span id="progressDay">Day 0 of 0</span>
+          <span id="progressRemain">0 days remaining</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <section class="section active" id="view-dashboard">
+      <div class="clock-panel">
+        <button class="clock-btn in" id="clockInBtn">
+          <span class="label">Clock In</span>
+          <span class="time" id="clockInTime">--:--</span>
+          <span class="hint" id="clockInHint">Tap to start your day</span>
+        </button>
+        <button class="clock-btn out" id="clockOutBtn">
+          <span class="label">Clock Out</span>
+          <span class="time" id="clockOutTime">--:--</span>
+          <span class="hint" id="clockOutHint">Tap to end your day</span>
+        </button>
+      </div>
+
+      <div class="grid grid-5" style="margin-bottom:18px">
+        <div class="card card-3d">
+          <h3>Today's Hours</h3>
+          <div class="big" id="todayHours">0h 0m</div>
+          <div class="sub" id="todayStatus">Not clocked in yet</div>
+        </div>
+        <div class="card card-3d">
+          <h3>Present</h3>
+          <div class="big" id="cyclePresent">0</div>
+          <div class="sub">days this cycle</div>
+        </div>
+        <div class="card card-3d">
+          <h3>Absent</h3>
+          <div class="big" id="cycleAbsent">0</div>
+          <div class="sub">days this cycle</div>
+        </div>
+        <div class="card card-3d">
+          <h3>Week-Off</h3>
+          <div class="big" id="cycleWeekOff">0</div>
+          <div class="sub">days this cycle</div>
+        </div>
+        <div class="card card-3d">
+          <h3>Attendance %</h3>
+          <div class="big" id="cyclePercent">0%</div>
+          <div class="sub" id="cyclePercentSub">of working days</div>
+        </div>
+      </div>
+
+      <div class="grid grid-3" style="margin-bottom:18px">
+        <div class="card card-3d">
+          <h3>⏱ General Hours (Cycle)</h3>
+          <div class="big" style="color:var(--accent-2)" id="cycleGeneral">0h 0m</div>
+          <div class="sub" id="cycleGenSub">Regular working hours</div>
+        </div>
+        <div class="card card-3d">
+          <h3>⚡ Overtime Hours (Cycle)</h3>
+          <div class="big" style="color:var(--gold)" id="cycleOvertime">0h 0m</div>
+          <div class="sub" id="cycleOtSub">Hours beyond standard</div>
+        </div>
+        <div class="card card-3d">
+          <h3>📊 Total Hours (Cycle)</h3>
+          <div class="big" id="cycleHours">0h 0m</div>
+          <div class="sub" id="cycleAvg">Avg: 0h 0m / day</div>
+          <div class="hours-breakdown">
+            <div class="hb-bar">
+              <div class="hb-gen" id="hbGen" style="width:0%"></div>
+              <div class="hb-ot" id="hbOt" style="width:0%"></div>
+            </div>
+            <div class="hb-legend">
+              <span class="gen" id="hbGenLbl">General: 0h</span>
+              <span class="ot" id="hbOtLbl">Overtime: 0h</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-2" style="margin-bottom:18px">
+        <div class="card">
+          <h3>Present · Absent · Week-Off</h3>
+          <div class="donut-wrap">
+            <div class="donut" id="donut"><div class="donut-center"><div class="v" id="donutV">0</div><div class="l">days</div></div></div>
+            <div class="legend">
+              <div class="row"><span class="dot" style="background:var(--green)"></span><span>Present: <b id="legP">0</b></span></div>
+              <div class="row"><span class="dot" style="background:var(--red)"></span><span>Absent: <b id="legA">0</b></span></div>
+              <div class="row"><span class="dot" style="background:var(--gray)"></span><span>Week-Off: <b id="legW">0</b></span></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Weekly Hours (General + Overtime)</h3>
+          <div class="bar-chart" id="weeklyChart"></div>
+          <div style="display:flex;gap:14px;justify-content:center;margin-top:8px;font-size:12px">
+            <span><span style="display:inline-block;width:10px;height:10px;background:linear-gradient(135deg,#7c5cff,#22d3ee);border-radius:2px;vertical-align:middle"></span> General</span>
+            <span><span style="display:inline-block;width:10px;height:10px;background:linear-gradient(135deg,#fbbf24,#f59e0b);border-radius:2px;vertical-align:middle"></span> Overtime</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ATTENDANCE -->
+    <section class="section" id="view-attendance">
+      <div class="section-head">
+        <div>
+          <h1>Attendance</h1>
+          <div class="sub">Tap edit to change any record. Totals row shows cycle summary.</div>
+        </div>
+        <div class="spacer"></div>
+        <input type="text" id="searchInput" placeholder="Search by date (YYYY-MM-DD)..." style="padding:10px 12px;border-radius:10px;background:var(--surface);border:1px solid var(--border);color:var(--text);min-width:240px" />
+      </div>
+      <div class="filters" id="filters">
+        <div class="chip active" data-filter="all">All</div>
+        <div class="chip" data-filter="present">Present</div>
+        <div class="chip" data-filter="absent">Absent</div>
+        <div class="chip" data-filter="weekoff">Week-Off</div>
+        <div class="chip" data-filter="incomplete">Incomplete</div>
+        <div class="chip" data-filter="overtime">Has Overtime</div>
+        <div class="chip" data-filter="edited">Edited</div>
+        <div class="chip" data-filter="today">Today</div>
+      </div>
+      <div class="table-wrap">
+        <table id="attTable">
+          <thead>
+            <tr>
+              <th>Date</th><th>Day</th><th>Clock In</th><th>Clock Out</th>
+              <th>Hours</th><th>Overtime</th><th>Attendance</th><th>Week-Off</th><th>Remark</th><th>Status</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="attBody"></tbody>
+          <tfoot id="attFoot"></tfoot>
+        </table>
+      </div>
+    </section>
+
+    <!-- CALENDAR -->
+    <section class="section" id="view-calendar">
+      <div class="section-head">
+        <div>
+          <h1>Calendar</h1>
+          <div class="sub">Visual overview of the selected cycle. Gold text = overtime.</div>
+        </div>
+      </div>
+      <div class="card">
+        <div id="calMonthLabel" style="font-weight:800;font-size:18px;margin-bottom:10px"></div>
+        <div class="cal-grid" id="calGrid"></div>
+      </div>
+      <div class="grid grid-4" style="margin-top:16px">
+        <div class="card card-3d"><h3>Cycle Days</h3><div class="big" id="calTotalDays">0</div></div>
+        <div class="card card-3d"><h3>Worked Days</h3><div class="big" id="calWorkedDays">0</div></div>
+        <div class="card card-3d"><h3>General Hours</h3><div class="big" style="color:var(--accent-2)" id="calGeneral">0h 0m</div></div>
+        <div class="card card-3d"><h3>Overtime Hours</h3><div class="big" style="color:var(--gold)" id="calOvertime">0h 0m</div></div>
+      </div>
+    </section>
+
+    <!-- REPORTS -->
+    <section class="section" id="view-reports">
+      <div class="section-head">
+        <div>
+          <h1>Reports</h1>
+          <div class="sub">Print or save as PDF using your browser's print dialog.</div>
+        </div>
+        <div class="spacer"></div>
+        <button class="btn primary" id="printBtn">🖨️ Generate Report</button>
+        <button class="btn" id="exportCsvBtn">📊 Export CSV</button>
+      </div>
+      <div class="card" id="reportCard">
+        <h2 id="reportTitle" style="margin-bottom:4px">Attendance Report</h2>
+        <div id="reportSub" style="color:var(--text-dim);font-size:13px;margin-bottom:16px"></div>
+        <div class="grid grid-5" style="margin-bottom:16px">
+          <div><div style="color:var(--text-dim);font-size:12px">Present</div><div style="font-size:22px;font-weight:800" id="repPresent">0</div></div>
+          <div><div style="color:var(--text-dim);font-size:12px">Absent</div><div style="font-size:22px;font-weight:800" id="repAbsent">0</div></div>
+          <div><div style="color:var(--text-dim);font-size:12px">Week-Off</div><div style="font-size:22px;font-weight:800" id="repWeekOff">0</div></div>
+          <div><div style="color:var(--text-dim);font-size:12px">General Hours</div><div style="font-size:22px;font-weight:800;color:var(--accent-2)" id="repGeneral">0h 0m</div></div>
+          <div><div style="color:var(--text-dim);font-size:12px">Overtime Hours</div><div style="font-size:22px;font-weight:800;color:var(--gold)" id="repOvertime">0h 0m</div></div>
+        </div>
+        <div class="table-wrap">
+          <table id="repTable">
+            <thead><tr><th>Date</th><th>Day</th><th>In</th><th>Out</th><th>Hours</th><th>Overtime</th><th>Status</th><th>Remark</th></tr></thead>
+            <tbody id="repBody"></tbody>
+            <tfoot id="repFoot"></tfoot>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- HISTORY -->
+    <section class="section" id="view-history">
+      <div class="section-head">
+        <div>
+          <h1>Yearly History</h1>
+          <div class="sub">Overview of every attendance cycle across years.</div>
+        </div>
+        <div class="spacer"></div>
+        <select class="cycle-select" id="yearSelect"></select>
+      </div>
+      <div class="grid grid-5" style="margin-bottom:16px">
+        <div class="card card-3d"><h3>Total Hours</h3><div class="big" id="yearHistHours">0h 0m</div></div>
+        <div class="card card-3d"><h3>General Hours</h3><div class="big" style="color:var(--accent-2)" id="yearHistGeneral">0h 0m</div></div>
+        <div class="card card-3d"><h3>Overtime Hours</h3><div class="big" style="color:var(--gold)" id="yearHistOvertime">0h 0m</div></div>
+        <div class="card card-3d"><h3>Present</h3><div class="big" id="yearHistPresent">0</div></div>
+        <div class="card card-3d"><h3>Absent</h3><div class="big" id="yearHistAbsent">0</div></div>
+      </div>
+      <div class="card">
+        <h3 style="margin-bottom:10px">Cycles in <span id="yearLabel">—</span></h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Cycle</th><th>Days</th><th>Present</th><th>Absent</th><th>Week-Off</th><th>General</th><th>Overtime</th><th>Total</th></tr></thead>
+            <tbody id="yearHistBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section class="section" id="view-settings">
+      <div class="section-head">
+        <div><h1>Settings</h1><div class="sub">Personalize your tracker. Standard hours drive overtime calculation.</div></div>
+      </div>
+      <div class="card">
+        <div class="settings-grid">
+          <div class="field">
+            <label>Your Name</label>
+            <input type="text" id="setName" placeholder="e.g. Alex" />
+          </div>
+          <div class="field">
+            <label>Standard Working Hours (per day)</label>
+            <input type="number" id="setStdHours" min="0" max="24" step="0.5" />
+          </div>
+          <div class="field">
+            <label>Expected Clock In</label>
+            <input type="time" id="setExpectedIn" />
+          </div>
+          <div class="field">
+            <label>Expected Clock Out</label>
+            <input type="time" id="setExpectedOut" />
+          </div>
+          <div class="field">
+            <label>Time Format</label>
+            <select id="setTimeFormat">
+              <option value="12">12-hour (AM/PM)</option>
+              <option value="24">24-hour</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Theme</label>
+            <select id="setTheme">
+              <option value="dark">Dark</option>
+              <option value="light">Light</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Cycle Start Day</label>
+            <input type="number" id="setCycleDay" min="1" max="28" value="25" />
+          </div>
+          <div class="field">
+            <label>Default Week-Off Days</label>
+            <input type="text" id="setWeekOffDays" placeholder="e.g. Sun (comma separated)" />
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn danger" id="clearDataBtn">🗑️ Clear All Data</button>
+          <button class="btn primary" id="saveSettingsBtn">💾 Save Settings</button>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal-back" id="editModal">
+  <div class="modal">
+    <h2>Edit Attendance</h2>
+    <div class="field"><label>Date</label><input type="date" id="editDate" /></div>
+    <div class="field"><label>Clock In</label><input type="time" id="editIn" /></div>
+    <div class="field"><label>Clock Out</label><input type="time" id="editOut" /></div>
+    <div class="field">
+      <label>Attendance</label>
+      <select id="editAttendance">
+        <option value="yes">Yes (Present)</option>
+        <option value="no">No (Absent)</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Week-Off</label>
+      <select id="editWeekOff">
+        <option value="no">No</option>
+        <option value="yes">Yes (Week-Off)</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Remark</label>
+      <textarea id="editRemark" placeholder="e.g. Late arrival, Sick, WFH..."></textarea>
+    </div>
+    <div id="editHistoryBox" style="font-size:12px;color:var(--text-dim);margin-bottom:10px"></div>
+    <div class="modal-actions">
+      <button class="btn" id="editCancel">Cancel</button>
+      <button class="btn danger" id="editReset">Reset Day</button>
+      <button class="btn primary" id="editSave">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+/* =========================================================
+   TimeForge v1.1 — Core Logic
+   ========================================================= */
+
+const DB_NAME = 'timeforge-db';
+const DB_VERSION = 1;
+let db = null;
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = e => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains('records')) d.createObjectStore('records', { keyPath: 'date' });
+      if (!d.objectStoreNames.contains('settings')) d.createObjectStore('settings', { keyPath: 'key' });
+    };
+    req.onsuccess = e => { db = e.target.result; resolve(db); };
+    req.onerror = e => reject(e.target.error);
+  });
+}
+function tx(store, mode='readonly') { return db.transaction(store, mode).objectStore(store); }
+function dbGet(store, key) {
+  return new Promise((res, rej) => {
+    const r = tx(store).get(key);
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+function dbPut(store, val) {
+  return new Promise((res, rej) => {
+    const r = tx(store, 'readwrite').put(val);
+    r.onsuccess = () => res();
+    r.onerror = () => rej(r.error);
+  });
+}
+function dbDelete(store, key) {
+  return new Promise((res, rej) => {
+    const r = tx(store, 'readwrite').delete(key);
+    r.onsuccess = () => res();
+    r.onerror = () => rej(r.error);
+  });
+}
+function dbAll(store) {
+  return new Promise((res, rej) => {
+    const r = tx(store).getAll();
+    r.onsuccess = () => res(r.result || []);
+    r.onerror = () => rej(r.error);
+  });
+}
+function dbClear(store) {
+  return new Promise((res, rej) => {
+    const r = tx(store, 'readwrite').clear();
+    r.onsuccess = () => res();
+    r.onerror = () => rej(r.error);
+  });
+}
+
+/* ---------- Date / Cycle ---------- */
+function pad(n){ return String(n).padStart(2,'0'); }
+function ymdKey(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+function parseKey(k){ const [y,m,d] = k.split('-').map(Number); return new Date(y, m-1, d); }
+function sameDay(a,b){ return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); }
+function addDays(d, n){ const x = new Date(d); x.setDate(x.getDate()+n); return x; }
+function dayName(d){ return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()]; }
+function monthName(d){ return ['January','February','March','April','May','June','July','August','September','October','November','December'][d.getMonth()]; }
+function formatNice(d){ return `${pad(d.getDate())} ${monthName(d).slice(0,3)} ${d.getFullYear()}`; }
+
+function cycleForDate(date, cycleDay=25) {
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const startThisMonth = new Date(d.getFullYear(), d.getMonth(), cycleDay);
+  let start, end;
+  if (d.getDate() >= cycleDay) {
+    start = startThisMonth;
+    end = new Date(start.getFullYear(), start.getMonth()+1, cycleDay - 1);
+  } else {
+    start = new Date(d.getFullYear(), d.getMonth()-1, cycleDay);
+    end = new Date(d.getFullYear(), d.getMonth(), cycleDay - 1);
+  }
+  return { start, end };
+}
+function shiftCycle(start, offset) {
+  return new Date(start.getFullYear(), start.getMonth() + offset, start.getDate());
+}
+function enumerateCycle(start, end) {
+  const arr = [];
+  let cur = new Date(start);
+  while (cur <= end) { arr.push(new Date(cur)); cur = addDays(cur, 1); }
+  return arr;
+}
+function cycleLabel(start, end){ return `${formatNice(start)} → ${formatNice(end)}`; }
+
+function splitIntoWeeks(start, end) {
+  const weeks = [];
+  let cur = new Date(start);
+  let i = 1;
+  while (cur <= end) {
+    const weekEnd = addDays(cur, 6);
+    const actualEnd = weekEnd > end ? end : weekEnd;
+    weeks.push({ n: i, start: new Date(cur), end: actualEnd });
+    cur = addDays(actualEnd, 1);
+    i++;
+  }
+  return weeks;
+}
+
+/* ---------- Time ---------- */
+function minutesBetween(inStr, outStr) {
+  if (!inStr || !outStr) return 0;
+  const [h1,m1] = inStr.split(':').map(Number);
+  const [h2,m2] = outStr.split(':').map(Number);
+  let mins = (h2*60+m2) - (h1*60+m1);
+  if (mins < 0) mins += 24*60;
+  return mins;
+}
+function fmtHours(mins) {
+  const h = Math.floor(mins/60);
+  const m = mins%60;
+  return `${h}h ${pad(m)}m`;
+}
+function fmtHoursShort(mins) {
+  const h = Math.floor(mins/60);
+  const m = mins%60;
+  return m>0 ? `${h}h${pad(m)}m` : `${h}h`;
+}
+function fmtTime(str, fmt12) {
+  if (!str) return '—';
+  const [h,m] = str.split(':').map(Number);
+  if (!fmt12) return `${pad(h)}:${pad(m)}`;
+  const hh = h%12 || 12;
+  const ap = h<12 ? 'AM' : 'PM';
+  return `${pad(hh)}:${pad(m)} ${ap}`;
+}
+
+/* ---------- State ---------- */
+const state = {
+  records: {},
+  settings: {
+    name: '',
+    stdHours: 8,
+    expectedIn: '09:00',
+    expectedOut: '18:00',
+    timeFormat: '12',
+    theme: 'dark',
+    cycleDay: 25,
+    weekOffDays: 'Sun'
+  },
+  viewCycleStart: null,
+  filter: 'all',
+  search: ''
+};
+
+function currentCycleStart() { return cycleForDate(new Date(), state.settings.cycleDay).start; }
+
+/* ---------- Persistence ---------- */
+async function loadAll() {
+  const recs = await dbAll('records');
+  state.records = {};
+  recs.forEach(r => state.records[r.date] = r);
+  const s = await dbGet('settings', 'main');
+  if (s) state.settings = { ...state.settings, ...s.value };
+  state.viewCycleStart = currentCycleStart();
+}
+async function saveRecord(rec) {
+  state.records[rec.date] = rec;
+  await dbPut('records', rec);
+}
+async function deleteRecord(date) {
+  delete state.records[date];
+  await dbDelete('records', date);
+}
+async function saveSettings() {
+  await dbPut('settings', { key: 'main', value: state.settings });
+}
+
+/* ---------- Record helpers ---------- */
+function ensureRecord(dateKey) {
+  if (state.records[dateKey]) return state.records[dateKey];
+  return {
+    date: dateKey, clockIn: '', clockOut: '',
+    attendance: 'no', weekOff: 'no', remark: '',
+    editedAt: null, history: []
+  };
+}
+function computeStatus(rec) {
+  if (rec.weekOff === 'yes') return 'weekoff';
+  if (rec.attendance === 'yes') {
+    if (rec.clockIn && rec.clockOut) return 'present';
+    return 'incomplete';
+  }
+  return 'absent';
+}
+function computeHours(rec) {
+  if (rec.weekOff === 'yes') return 0;
+  if (!rec.clockIn || !rec.clockOut) return 0;
+  return minutesBetween(rec.clockIn, rec.clockOut);
+}
+/* Overtime = hours beyond standard per day (only on present days) */
+function computeOvertime(rec) {
+  const status = computeStatus(rec);
+  if (status !== 'present') return 0;
+  const stdMins = (state.settings.stdHours || 8) * 60;
+  const worked = computeHours(rec);
+  return Math.max(0, worked - stdMins);
+}
+/* General = regular hours (capped at standard per day) */
+function computeGeneral(rec) {
+  const status = computeStatus(rec);
+  if (status !== 'present') return 0;
+  const stdMins = (state.settings.stdHours || 8) * 60;
+  const worked = computeHours(rec);
+  return Math.min(worked, stdMins);
+}
+
+/* ---------- Clock In / Out ---------- */
+async function doClockIn() {
+  const now = new Date();
+  const key = ymdKey(now);
+  const rec = ensureRecord(key);
+  if (rec.clockIn) {
+    toast('Already clocked in today. Use Edit to change.', 'info');
+    return;
+  }
+  rec.clockIn = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  rec.attendance = 'yes';
+  rec.editedAt = now.toISOString();
+  rec.history = rec.history || [];
+  rec.history.push({ field: 'clockIn', from: '', to: rec.clockIn, at: rec.editedAt });
+  await saveRecord(rec);
+  toast(`Clocked in at ${fmtTime(rec.clockIn, state.settings.timeFormat==='12')}`, 'success');
+  renderAll();
+}
+async function doClockOut() {
+  const now = new Date();
+  const key = ymdKey(now);
+  const rec = ensureRecord(key);
+  if (!rec.clockIn) {
+    toast('Clock in first before clocking out.', 'error');
+    return;
+  }
+  if (rec.clockOut) {
+    if (!confirm('You already clocked out. Overwrite?')) return;
+  }
+  const prev = rec.clockOut || '';
+  rec.clockOut = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  rec.editedAt = now.toISOString();
+  rec.history = rec.history || [];
+  rec.history.push({ field: 'clockOut', from: prev, to: rec.clockOut, at: rec.editedAt });
+  await saveRecord(rec);
+  const mins = computeHours(rec);
+  const ot = computeOvertime(rec);
+  const msg = ot > 0
+    ? `Clocked out. Worked ${fmtHours(mins)} (${fmtHours(ot)} overtime).`
+    : `Clocked out. Worked ${fmtHours(mins)} today.`;
+  toast(msg, 'success');
+  renderAll();
+}
+
+/* ---------- Aggregations ---------- */
+function cycleEnd(start) {
+  return new Date(start.getFullYear(), start.getMonth()+1, state.settings.cycleDay - 1);
+}
+function cycleRecords(start, end) {
+  const days = enumerateCycle(start, end);
+  return days.map(d => {
+    const k = ymdKey(d);
+    const rec = state.records[k] || ensureRecord(k);
+    return { date: d, key: k, rec };
+  });
+}
+function summarize(rows) {
+  let present=0, absent=0, weekoff=0, incomplete=0;
+  let totalMins=0, generalMins=0, overtimeMins=0, workedDays=0;
+  let otDays = 0;
+  rows.forEach(r => {
+    const s = computeStatus(r.rec);
+    const h = computeHours(r.rec);
+    const ot = computeOvertime(r.rec);
+    const gen = computeGeneral(r.rec);
+    if (s === 'present') { present++; totalMins += h; generalMins += gen; overtimeMins += ot; workedDays++; if (ot>0) otDays++; }
+    else if (s === 'absent') absent++;
+    else if (s === 'weekoff') weekoff++;
+    else if (s === 'incomplete') incomplete++;
+  });
+  return { present, absent, weekoff, incomplete, totalMins, generalMins, overtimeMins, workedDays, otDays, avg: workedDays? totalMins/workedDays : 0 };
+}
+
+/* ---------- Rendering ---------- */
+function renderLiveClock() {
+  const now = new Date();
+  const opts = { weekday:'long', year:'numeric', month:'long', day:'numeric' };
+  document.getElementById('liveDate').textContent = now.toLocaleDateString(undefined, opts);
+  const tf = state.settings.timeFormat === '12';
+  document.getElementById('liveTime').textContent = now.toLocaleTimeString(undefined, { hour12: tf });
+}
+
+function renderCycleNav() {
+  const start = state.viewCycleStart;
+  const end = cycleEnd(start);
+  document.getElementById('cycleRange').textContent = cycleLabel(start, end);
+
+  const today = new Date();
+  const cur = currentCycleStart();
+  const pill = document.getElementById('cycleStatus');
+  if (sameDay(start, cur)) { pill.textContent = '🟢 Current Cycle'; pill.className = 'status-pill'; }
+  else if (start < cur) { pill.textContent = '⚪ Previous Cycle'; pill.className = 'status-pill prev'; }
+  else { pill.textContent = '🔵 Future Cycle'; pill.className = 'status-pill future'; }
+
+  const totalDays = Math.round((end - start)/(86400000)) + 1;
+  let passed = 0;
+  if (today >= start && today <= end) passed = Math.round((today - start)/86400000) + 1;
+  else if (today > end) passed = totalDays;
+  const pct = Math.max(0, Math.min(100, (passed/totalDays)*100));
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressDay').textContent = `Day ${passed} of ${totalDays}`;
+  document.getElementById('progressRemain').textContent = `${Math.max(0,totalDays-passed)} days remaining`;
+
+  const sel = document.getElementById('cycleSelect');
+  sel.innerHTML = '';
+  const base = shiftCycle(cur, -24);
+  for (let i=0; i<48; i++) {
+    const s = shiftCycle(base, i);
+    const e = cycleEnd(s);
+    const opt = document.createElement('option');
+    opt.value = s.toISOString();
+    opt.textContent = cycleLabel(s, e);
+    sel.appendChild(opt);
+  }
+  sel.value = start.toISOString();
+}
+
+function renderDashboard() {
+  const todayKey = ymdKey(new Date());
+  const todayRec = state.records[todayKey] || ensureRecord(todayKey);
+  const tf = state.settings.timeFormat === '12';
+  document.getElementById('clockInTime').textContent = todayRec.clockIn ? fmtTime(todayRec.clockIn, tf) : '--:--';
+  document.getElementById('clockOutTime').textContent = todayRec.clockOut ? fmtTime(todayRec.clockOut, tf) : '--:--';
+  document.getElementById('clockInHint').textContent = todayRec.clockIn ? 'Already clocked in' : 'Tap to start your day';
+  document.getElementById('clockOutHint').textContent = todayRec.clockOut ? 'Tap to update' : 'Tap to end your day';
+  const inBtn = document.getElementById('clockInBtn');
+  const outBtn = document.getElementById('clockOutBtn');
+  inBtn.classList.toggle('pulse', !todayRec.clockIn);
+  outBtn.classList.toggle('pulse', !!todayRec.clockIn && !todayRec.clockOut);
+
+  const todayMins = computeHours(todayRec);
+  const todayOt = computeOvertime(todayRec);
+  document.getElementById('todayHours').textContent = fmtHours(todayMins);
+  const ts = computeStatus(todayRec);
+  let tsLabel = { present:'Present ✅', absent:'Absent', weekoff:'Week-Off', incomplete:'Incomplete ⚠️' }[ts];
+  if (ts === 'present' && todayOt > 0) tsLabel += ` · ${fmtHours(todayOt)} OT`;
+  document.getElementById('todayStatus').textContent = tsLabel;
+
+  const start = state.viewCycleStart;
+  const end = cycleEnd(start);
+  const rows = cycleRecords(start, end);
+  const s = summarize(rows);
+  document.getElementById('cyclePresent').textContent = s.present;
+  document.getElementById('cycleAbsent').textContent = s.absent;
+  document.getElementById('cycleWeekOff').textContent = s.weekoff;
+  const working = s.present + s.absent;
+  const pct = working ? Math.round((s.present/working)*100) : 0;
+  document.getElementById('cyclePercent').textContent = pct + '%';
+  document.getElementById('cyclePercentSub').textContent = `${s.present} of ${working} working days`;
+
+  // Hours breakdown
+  document.getElementById('cycleGeneral').textContent = fmtHours(s.generalMins);
+  document.getElementById('cycleOvertime').textContent = fmtHours(s.overtimeMins);
+  document.getElementById('cycleHours').textContent = fmtHours(s.totalMins);
+  document.getElementById('cycleAvg').textContent = `Avg: ${fmtHours(Math.round(s.avg))} / day`;
+  document.getElementById('cycleGenSub').textContent = `${s.present} days × ${state.settings.stdHours}h standard`;
+  document.getElementById('cycleOtSub').textContent = s.otDays > 0 ? `${s.otDays} day${s.otDays>1?'s':''} with overtime` : 'No overtime yet';
+
+  const totalForBar = s.generalMins + s.overtimeMins || 1;
+  document.getElementById('hbGen').style.width = (s.generalMins/totalForBar*100) + '%';
+  document.getElementById('hbOt').style.width = (s.overtimeMins/totalForBar*100) + '%';
+  document.getElementById('hbGenLbl').textContent = `General: ${fmtHoursShort(s.generalMins)}`;
+  document.getElementById('hbOtLbl').textContent = `Overtime: ${fmtHoursShort(s.overtimeMins)}`;
+
+  // donut
+  const total = s.present + s.absent + s.weekoff || 1;
+  const p1 = (s.present/total)*360;
+  const p2 = p1 + (s.absent/total)*360;
+  document.getElementById('donut').style.background = `conic-gradient(var(--green) 0deg ${p1}deg, var(--red) ${p1}deg ${p2}deg, var(--gray) ${p2}deg 360deg)`;
+  document.getElementById('donutV').textContent = s.present + s.absent + s.weekoff;
+  document.getElementById('legP').textContent = s.present;
+  document.getElementById('legA').textContent = s.absent;
+  document.getElementById('legW').textContent = s.weekoff;
+
+  // weekly stacked chart
+  const weeks = splitIntoWeeks(start, end);
+  const chart = document.getElementById('weeklyChart');
+  chart.innerHTML = '';
+  let maxH = 1;
+  const weekData = weeks.map(w => {
+    const rs = cycleRecords(w.start, w.end);
+    const gen = rs.reduce((a,r)=>a+computeGeneral(r.rec),0);
+    const ot = rs.reduce((a,r)=>a+computeOvertime(r.rec),0);
+    const total = gen + ot;
+    if (total>maxH) maxH = total;
+    return { label: `W${w.n}`, gen, ot, total };
+  });
+  weekData.forEach(w => {
+    const col = document.createElement('div');
+    col.className = 'bar-col';
+    const stack = document.createElement('div');
+    stack.className = 'bar-stack';
+    stack.style.height = (w.total/maxH*130) + 'px';
+    stack.title = `General: ${fmtHours(w.gen)}\nOvertime: ${fmtHours(w.ot)}\nTotal: ${fmtHours(w.total)}`;
+    const barGen = document.createElement('div');
+    barGen.className = 'bar bar-gen';
+    barGen.style.height = (w.gen/maxH*130) + 'px';
+    const barOt = document.createElement('div');
+    barOt.className = 'bar bar-ot';
+    barOt.style.height = (w.ot/maxH*130) + 'px';
+    stack.appendChild(barGen);
+    stack.appendChild(barOt);
+    const val = document.createElement('div');
+    val.className = 'bar-value';
+    val.textContent = fmtHoursShort(w.total);
+    const lab = document.createElement('div');
+    lab.className = 'bar-label';
+    lab.textContent = w.label;
+    col.appendChild(val); col.appendChild(stack); col.appendChild(lab);
+    chart.appendChild(col);
+  });
+}
+
+function renderAttendance() {
+  const start = state.viewCycleStart;
+  const end = cycleEnd(start);
+  const rows = cycleRecords(start, end);
+  const tf = state.settings.timeFormat === '12';
+  const today = new Date();
+  const body = document.getElementById('attBody');
+  const foot = document.getElementById('attFoot');
+  body.innerHTML = '';
+
+  // Totals accumulators (over all rows, not filtered)
+  let totGeneral = 0, totOvertime = 0, totHours = 0;
+  let totPresent = 0, totAbsent = 0, totWeekoff = 0;
+
+  // First pass: compute totals over ALL rows (unfiltered)
+  rows.forEach(r => {
+    const rec = r.rec;
+    const status = computeStatus(rec);
+    totHours += computeHours(rec);
+    totGeneral += computeGeneral(rec);
+    totOvertime += computeOvertime(rec);
+    if (status === 'present') totPresent++;
+    else if (status === 'absent') totAbsent++;
+    else if (status === 'weekoff') totWeekoff++;
+  });
+
+  const search = state.search.trim().toLowerCase();
+  rows.forEach(r => {
+    const rec = r.rec;
+    const status = computeStatus(rec);
+    const hours = computeHours(rec);
+    const ot = computeOvertime(rec);
+
+    if (state.filter === 'present' && status !== 'present') return;
+    if (state.filter === 'absent' && status !== 'absent') return;
+    if (state.filter === 'weekoff' && status !== 'weekoff') return;
+    if (state.filter === 'incomplete' && status !== 'incomplete') return;
+    if (state.filter === 'overtime' && ot <= 0) return;
+    if (state.filter === 'edited' && !rec.editedAt) return;
+    if (state.filter === 'today' && !sameDay(r.date, today)) return;
+    if (search && !r.key.includes(search)) return;
+
+    const tr = document.createElement('tr');
+    tr.className = status;
+    if (sameDay(r.date, today)) tr.classList.add('today');
+
+    const statusBadge = {
+      present: '<span class="badge present">✓ Present</span>',
+      absent: '<span class="badge absent">✗ Absent</span>',
+      weekoff: '<span class="badge weekoff">☕ Week-Off</span>',
+      incomplete: '<span class="badge incomplete">⚠ Incomplete</span>'
+    }[status];
+    const editedBadge = rec.editedAt ? ' <span class="badge edited">Edited</span>' : '';
+    const otBadge = ot > 0
+      ? `<span class="badge overtime">⚡ ${fmtHours(ot)}</span>`
+      : '<span style="color:var(--text-dim)">—</span>';
+
+    tr.innerHTML = `
+      <td><b>${formatNice(r.date)}</b></td>
+      <td>${dayName(r.date)}</td>
+      <td>${rec.clockIn ? fmtTime(rec.clockIn, tf) : '—'}</td>
+      <td>${rec.clockOut ? fmtTime(rec.clockOut, tf) : '—'}</td>
+      <td>${hours>0 ? fmtHours(hours) : '—'}</td>
+      <td>${otBadge}</td>
+      <td>${rec.attendance==='yes'?'Yes':'No'}</td>
+      <td>${rec.weekOff==='yes'?'Yes':'No'}</td>
+      <td>${rec.remark ? escapeHtml(rec.remark) : '<span style="color:var(--text-dim)">—</span>'}</td>
+      <td>${statusBadge}${editedBadge}</td>
+      <td><button class="row-btn" data-edit="${r.key}">Edit</button></td>
+    `;
+    body.appendChild(tr);
+  });
+
+  // Totals row
+  foot.innerHTML = `
+    <tr>
+      <td colspan="4" class="total-label">Cycle Totals · ${rows.length} days · ${totPresent} present · ${totAbsent} absent · ${totWeekoff} week-off</td>
+      <td class="total-val total-combined">${fmtHours(totHours)}</td>
+      <td class="total-val total-overtime">⚡ ${fmtHours(totOvertime)}</td>
+      <td colspan="2" class="total-val total-general">General: ${fmtHours(totGeneral)}</td>
+      <td colspan="2"></td>
+    </tr>
+  `;
+
+  body.querySelectorAll('[data-edit]').forEach(b => {
+    b.addEventListener('click', () => openEditModal(b.dataset.edit));
+  });
+}
+
+function renderCalendar() {
+  const start = state.viewCycleStart;
+  const end = cycleEnd(start);
+  document.getElementById('calMonthLabel').textContent = cycleLabel(start, end);
+  const grid = document.getElementById('calGrid');
+  grid.innerHTML = '';
+  ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(d => {
+    const h = document.createElement('div');
+    h.className = 'cal-head'; h.textContent = d; grid.appendChild(h);
+  });
+  const firstWeekday = start.getDay();
+  for (let i=0; i<firstWeekday; i++) {
+    const e = document.createElement('div'); e.className = 'cal-day empty'; grid.appendChild(e);
+  }
+  const days = enumerateCycle(start, end);
+  const today = new Date();
+  let workedDays = 0, totalGen = 0, totalOt = 0;
+  days.forEach(d => {
+    const rec = state.records[ymdKey(d)] || ensureRecord(ymdKey(d));
+    const s = computeStatus(rec);
+    const div = document.createElement('div');
+    div.className = 'cal-day ' + s;
+    if (sameDay(d, today)) div.classList.add('today');
+    const hrs = computeHours(rec);
+    const ot = computeOvertime(rec);
+    const gen = computeGeneral(rec);
+    if (s === 'present') { workedDays++; totalGen += gen; totalOt += ot; }
+    const hrsLine = hrs>0 ? `<div class="hrs">${fmtHoursShort(hrs)}</div>` : '';
+    const otLine = ot>0 ? `<div class="ot">+${fmtHoursShort(ot)} OT</div>` : '';
+    div.innerHTML = `<div class="num">${d.getDate()}</div>${hrsLine}${otLine}`;
+    div.title = `${formatNice(d)} · ${s}${ot>0?' · OT: '+fmtHours(ot):''}`;
+    div.addEventListener('click', () => openEditModal(ymdKey(d)));
+    grid.appendChild(div);
+  });
+  document.getElementById('calTotalDays').textContent = days.length;
+  document.getElementById('calWorkedDays').textContent = workedDays;
+  document.getElementById('calGeneral').textContent = fmtHours(totalGen);
+  document.getElementById('calOvertime').textContent = fmtHours(totalOt);
+}
+
+function renderReports() {
+  const start = state.viewCycleStart;
+  const end = cycleEnd(start);
+  const rows = cycleRecords(start, end);
+  const s = summarize(rows);
+  const tf = state.settings.timeFormat === '12';
+  document.getElementById('reportTitle').textContent = `Attendance Report — ${state.settings.name || 'Employee'}`;
+  document.getElementById('reportSub').textContent = `Cycle: ${cycleLabel(start, end)} · Standard: ${state.settings.stdHours}h/day · Generated ${new Date().toLocaleString()}`;
+  document.getElementById('repPresent').textContent = s.present;
+  document.getElementById('repAbsent').textContent = s.absent;
+  document.getElementById('repWeekOff').textContent = s.weekoff;
+  document.getElementById('repGeneral').textContent = fmtHours(s.generalMins);
+  document.getElementById('repOvertime').textContent = fmtHours(s.overtimeMins);
+
+  const body = document.getElementById('repBody');
+  const foot = document.getElementById('repFoot');
+  body.innerHTML = '';
+  let totGen = 0, totOt = 0, totH = 0;
+  rows.forEach(r => {
+    const rec = r.rec;
+    const status = computeStatus(rec);
+    const h = computeHours(rec);
+    const ot = computeOvertime(rec);
+    totH += h; totGen += computeGeneral(rec); totOt += ot;
+    const tr = document.createElement('tr');
+    tr.className = status;
+    tr.innerHTML = `
+      <td>${formatNice(r.date)}</td>
+      <td>${dayName(r.date)}</td>
+      <td>${rec.clockIn?fmtTime(rec.clockIn,tf):'—'}</td>
+      <td>${rec.clockOut?fmtTime(rec.clockOut,tf):'—'}</td>
+      <td>${h>0?fmtHours(h):'—'}</td>
+      <td>${ot>0?fmtHours(ot):'—'}</td>
+      <td>${status}</td>
+      <td>${escapeHtml(rec.remark||'')}</td>
+    `;
+    body.appendChild(tr);
+  });
+  foot.innerHTML = `
+    <tr>
+      <td colspan="4" class="total-label">Cycle Totals</td>
+      <td class="total-val total-combined">${fmtHours(totH)}</td>
+      <td class="total-val total-overtime">⚡ ${fmtHours(totOt)}</td>
+      <td colspan="2" class="total-val total-general">General: ${fmtHours(totGen)}</td>
+    </tr>
+  `;
+}
+
+function renderHistory() {
+  const sel = document.getElementById('yearSelect');
+  const currentYear = new Date().getFullYear();
+  const years = new Set();
+  for (let y=currentYear-3; y<=currentYear+3; y++) years.add(y);
+  Object.keys(state.records).forEach(k => years.add(parseKey(k).getFullYear()));
+  const sorted = [...years].sort((a,b)=>b-a);
+  const prev = sel.value || String(currentYear);
+  sel.innerHTML = '';
+  sorted.forEach(y => {
+    const o = document.createElement('option'); o.value = y; o.textContent = y; sel.appendChild(o);
+  });
+  sel.value = sorted.includes(Number(prev)) ? prev : String(currentYear);
+
+  const year = Number(sel.value);
+  document.getElementById('yearLabel').textContent = year;
+
+  const cycles = [];
+  for (let m=-1; m<=11; m++) {
+    const s = new Date(year, m, state.settings.cycleDay);
+    const e = cycleEnd(s);
+    if (s.getFullYear()===year || e.getFullYear()===year) cycles.push({ start:s, end:e });
+  }
+  const seen = new Set();
+  const uniq = cycles.filter(c => {
+    const k = ymdKey(c.start);
+    if (seen.has(k)) return false;
+    seen.add(k); return true;
+  });
+
+  let tH=0, tG=0, tO=0, tP=0, tA=0, tW=0;
+  const body = document.getElementById('yearHistBody');
+  body.innerHTML = '';
+  uniq.forEach(c => {
+    const rows = cycleRecords(c.start, c.end);
+    const s = summarize(rows);
+    tH += s.totalMins; tG += s.generalMins; tO += s.overtimeMins;
+    tP += s.present; tA += s.absent; tW += s.weekoff;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${cycleLabel(c.start, c.end)}</td>
+      <td>${rows.length}</td>
+      <td>${s.present}</td>
+      <td>${s.absent}</td>
+      <td>${s.weekoff}</td>
+      <td style="color:var(--accent-2);font-weight:700">${fmtHours(s.generalMins)}</td>
+      <td style="color:var(--gold);font-weight:700">${fmtHours(s.overtimeMins)}</td>
+      <td style="font-weight:800">${fmtHours(s.totalMins)}</td>
+    `;
+    tr.style.cursor = 'pointer';
+    tr.addEventListener('click', () => {
+      state.viewCycleStart = c.start;
+      renderAll();
+      showView('dashboard');
+    });
+    body.appendChild(tr);
+  });
+  document.getElementById('yearHistHours').textContent = fmtHours(tH);
+  document.getElementById('yearHistGeneral').textContent = fmtHours(tG);
+  document.getElementById('yearHistOvertime').textContent = fmtHours(tO);
+  document.getElementById('yearHistPresent').textContent = tP;
+  document.getElementById('yearHistAbsent').textContent = tA;
+}
+
+function renderSettings() {
+  document.getElementById('setName').value = state.settings.name || '';
+  document.getElementById('setStdHours').value = state.settings.stdHours || 8;
+  document.getElementById('setExpectedIn').value = state.settings.expectedIn || '09:00';
+  document.getElementById('setExpectedOut').value = state.settings.expectedOut || '18:00';
+  document.getElementById('setTimeFormat').value = state.settings.timeFormat || '12';
+  document.getElementById('setTheme').value = state.settings.theme || 'dark';
+  document.getElementById('setCycleDay').value = state.settings.cycleDay || 25;
+  document.getElementById('setWeekOffDays').value = state.settings.weekOffDays || 'Sun';
+}
+
+function renderAll() {
+  renderCycleNav();
+  renderDashboard();
+  renderAttendance();
+  renderCalendar();
+  renderReports();
+  renderHistory();
+  renderSettings();
+}
+
+/* ---------- Edit modal ---------- */
+let editingKey = null;
+function openEditModal(key) {
+  editingKey = key;
+  const rec = state.records[key] || ensureRecord(key);
+  document.getElementById('editDate').value = key;
+  document.getElementById('editIn').value = rec.clockIn || '';
+  document.getElementById('editOut').value = rec.clockOut || '';
+  document.getElementById('editAttendance').value = rec.attendance || 'no';
+  document.getElementById('editWeekOff').value = rec.weekOff || 'no';
+  document.getElementById('editRemark').value = rec.remark || '';
+  const hist = rec.history || [];
+  const box = document.getElementById('editHistoryBox');
+  if (hist.length) {
+    box.innerHTML = '<b>Edit history:</b><br>' + hist.slice(-5).map(h =>
+      `• ${h.field}: "${h.from||'(empty)'}" → "${h.to}" <span style="opacity:.6">(${new Date(h.at).toLocaleString()})</span>`
+    ).join('<br>');
+  } else box.innerHTML = '<i>No edits yet.</i>';
+  document.getElementById('editModal').classList.add('open');
+}
+function closeEditModal() { document.getElementById('editModal').classList.remove('open'); editingKey = null; }
+
+async function saveEdit() {
+  if (!editingKey) return;
+  const newDateKey = document.getElementById('editDate').value;
+  const oldKey = editingKey;
+  const rec = state.records[oldKey] || ensureRecord(oldKey);
+  const changes = [];
+  const newIn = document.getElementById('editIn').value;
+  const newOut = document.getElementById('editOut').value;
+  const newAtt = document.getElementById('editAttendance').value;
+  const newWO = document.getElementById('editWeekOff').value;
+  const newRem = document.getElementById('editRemark').value.trim();
+
+  if (rec.clockIn !== newIn) changes.push({ field:'clockIn', from:rec.clockIn||'', to:newIn });
+  if (rec.clockOut !== newOut) changes.push({ field:'clockOut', from:rec.clockOut||'', to:newOut });
+  if (rec.attendance !== newAtt) changes.push({ field:'attendance', from:rec.attendance, to:newAtt });
+  if (rec.weekOff !== newWO) changes.push({ field:'weekOff', from:rec.weekOff, to:newWO });
+  if (rec.remark !== newRem) changes.push({ field:'remark', from:rec.remark||'', to:newRem });
+
+  if (newIn && newOut && newIn === newOut) {
+    toast('Clock in and out cannot be the same.', 'error'); return;
+  }
+
+  rec.clockIn = newIn;
+  rec.clockOut = newOut;
+  rec.attendance = newAtt;
+  rec.weekOff = newWO;
+  rec.remark = newRem;
+  rec.editedAt = new Date().toISOString();
+  rec.history = rec.history || [];
+  changes.forEach(c => rec.history.push({ ...c, at: rec.editedAt }));
+
+  if (newDateKey !== oldKey) {
+    if (state.records[newDateKey]) {
+      if (!confirm('A record already exists for the new date. Overwrite?')) return;
+    }
+    rec.date = newDateKey;
+    await deleteRecord(oldKey);
+  }
+  await saveRecord(rec);
+  toast('Record saved.', 'success');
+  closeEditModal();
+  renderAll();
+}
+
+async function resetDay() {
+  if (!editingKey) return;
+  if (!confirm('Reset this day to empty?')) return;
+  await deleteRecord(editingKey);
+  toast('Day reset.', 'info');
+  closeEditModal();
+  renderAll();
+}
+
+/* ---------- Navigation ---------- */
+function showView(v) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view===v));
+  document.getElementById('sidebar').classList.remove('open');
+}
+
+/* ---------- Toast ---------- */
+function toast(msg, type='info') {
+  const wrap = document.getElementById('toastWrap');
+  const t = document.createElement('div');
+  t.className = 'toast ' + type;
+  t.textContent = msg;
+  wrap.appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; t.style.transform='translateX(120%)'; t.style.transition='all .3s'; }, 2600);
+  setTimeout(() => t.remove(), 3000);
+}
+
+/* ---------- Export / Import ---------- */
+async function exportJSON() {
+  const data = { records: Object.values(state.records), settings: state.settings, exportedAt: new Date().toISOString() };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `timeforge-backup-${ymdKey(new Date())}.json`;
+  a.click(); URL.revokeObjectURL(url);
+  toast('Backup downloaded.', 'success');
+}
+async function importJSON(file) {
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    if (!data.records || !Array.isArray(data.records)) throw new Error('Invalid format');
+    if (!confirm(`Import ${data.records.length} records? This will merge with existing data.`)) return;
+    for (const r of data.records) {
+      if (!r.date) continue;
+      await saveRecord(r);
+    }
+    if (data.settings) {
+      state.settings = { ...state.settings, ...data.settings };
+      await saveSettings();
+    }
+    toast('Import successful.', 'success');
+    renderAll();
+  } catch (e) {
+    toast('Import failed: ' + e.message, 'error');
+  }
+}
+async function exportCSV() {
+  const start = state.viewCycleStart;
+  const end = cycleEnd(start);
+  const rows = cycleRecords(start, end);
+  const lines = [['Date','Day','ClockIn','ClockOut','Hours','Overtime','General','Attendance','WeekOff','Remark','Status']];
+  rows.forEach(r => {
+    const rec = r.rec;
+    lines.push([
+      r.key, dayName(r.date), rec.clockIn||'', rec.clockOut||'',
+      computeHours(rec), computeOvertime(rec), computeGeneral(rec),
+      rec.attendance, rec.weekOff,
+      (rec.remark||'').replace(/"/g,'""'), computeStatus(rec)
+    ]);
+  });
+  const csv = lines.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type:'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `timeforge-${ymdKey(start)}-to-${ymdKey(end)}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+  toast('CSV exported.', 'success');
+}
+
+/* ---------- Theme ---------- */
+function applyTheme() {
+  document.documentElement.setAttribute('data-theme', state.settings.theme || 'dark');
+}
+
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ---------- Wire up ---------- */
+async function init() {
+  await openDB();
+  await loadAll();
+  applyTheme();
+  renderAll();
+  renderLiveClock();
+  setInterval(renderLiveClock, 1000);
+
+  document.querySelectorAll('.nav-btn').forEach(b => b.addEventListener('click', () => showView(b.dataset.view)));
+  document.getElementById('menuBtn').addEventListener('click', () => document.getElementById('sidebar').classList.toggle('open'));
+
+  document.getElementById('clockInBtn').addEventListener('click', doClockIn);
+  document.getElementById('clockOutBtn').addEventListener('click', doClockOut);
+
+  document.getElementById('prevCycle').addEventListener('click', () => { state.viewCycleStart = shiftCycle(state.viewCycleStart, -1); renderAll(); });
+  document.getElementById('nextCycle').addEventListener('click', () => { state.viewCycleStart = shiftCycle(state.viewCycleStart, 1); renderAll(); });
+  document.getElementById('currCycle').addEventListener('click', () => { state.viewCycleStart = currentCycleStart(); renderAll(); });
+  document.getElementById('cycleSelect').addEventListener('change', e => {
+    state.viewCycleStart = new Date(e.target.value);
+    renderAll();
+  });
+
+  document.querySelectorAll('#filters .chip').forEach(c => c.addEventListener('click', () => {
+    document.querySelectorAll('#filters .chip').forEach(x => x.classList.remove('active'));
+    c.classList.add('active');
+    state.filter = c.dataset.filter;
+    renderAttendance();
+  }));
+  document.getElementById('searchInput').addEventListener('input', e => {
+    state.search = e.target.value; renderAttendance();
+  });
+
+  document.getElementById('editCancel').addEventListener('click', closeEditModal);
+  document.getElementById('editSave').addEventListener('click', saveEdit);
+  document.getElementById('editReset').addEventListener('click', resetDay);
+  document.getElementById('editModal').addEventListener('click', e => { if (e.target.id === 'editModal') closeEditModal(); });
+
+  document.getElementById('themeBtn').addEventListener('click', () => {
+    state.settings.theme = state.settings.theme === 'dark' ? 'light' : 'dark';
+    saveSettings(); applyTheme();
+  });
+
+  document.getElementById('exportBtn').addEventListener('click', exportJSON);
+  document.getElementById('importBtn').addEventListener('click', () => document.getElementById('importFile').click());
+  document.getElementById('importFile').addEventListener('change', e => {
+    if (e.target.files[0]) importJSON(e.target.files[0]);
+    e.target.value = '';
+  });
+  document.getElementById('exportCsvBtn').addEventListener('click', exportCSV);
+  document.getElementById('printBtn').addEventListener('click', () => window.print());
+
+  document.getElementById('saveSettingsBtn').addEventListener('click', async () => {
+    state.settings.name = document.getElementById('setName').value.trim();
+    state.settings.stdHours = Number(document.getElementById('setStdHours').value) || 8;
+    state.settings.expectedIn = document.getElementById('setExpectedIn').value || '09:00';
+    state.settings.expectedOut = document.getElementById('setExpectedOut').value || '18:00';
+    state.settings.timeFormat = document.getElementById('setTimeFormat').value;
+    state.settings.theme = document.getElementById('setTheme').value;
+    const cd = Number(document.getElementById('setCycleDay').value);
+    if (cd>=1 && cd<=28) state.settings.cycleDay = cd;
+    state.settings.weekOffDays = document.getElementById('setWeekOffDays').value;
+    await saveSettings();
+    applyTheme();
+    state.viewCycleStart = currentCycleStart();
+    renderAll();
+    toast('Settings saved. Overtime recalculated based on new standard hours.', 'success');
+  });
+  document.getElementById('clearDataBtn').addEventListener('click', async () => {
+    if (!confirm('Delete ALL attendance records? This cannot be undone.')) return;
+    if (!confirm('Are you absolutely sure?')) return;
+    await dbClear('records');
+    state.records = {};
+    renderAll();
+    toast('All data cleared.', 'info');
+  });
+
+  document.getElementById('yearSelect').addEventListener('change', renderHistory);
+
+  function checkWidth(){
+    document.getElementById('menuBtn').style.display = window.innerWidth <= 980 ? 'grid' : 'none';
+  }
+  checkWidth(); window.addEventListener('resize', checkWidth);
+}
+
+init().catch(e => { console.error(e); toast('Init error: '+e.message, 'error'); });
+</script>
+</body>
+</html>
